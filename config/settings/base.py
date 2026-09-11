@@ -72,6 +72,7 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
+                "storefront.context_processors.canonical_url",
             ],
         },
     },
@@ -138,9 +139,7 @@ LOGGING = {
         "structured": {
             "()": structlog.stdlib.ProcessorFormatter,
             "processor": (
-                structlog.processors.JSONRenderer()
-                if LOG_FORMAT == "json"
-                else structlog.dev.ConsoleRenderer()
+                structlog.processors.JSONRenderer() if LOG_FORMAT == "json" else structlog.dev.ConsoleRenderer()
             ),
             "foreign_pre_chain": _shared_processors,
         },

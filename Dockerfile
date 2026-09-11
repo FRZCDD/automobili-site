@@ -37,7 +37,8 @@ COPY . .
 FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.production
 
 WORKDIR /app
 
@@ -55,7 +56,11 @@ RUN addgroup --system appgroup && \
 
 USER appuser
 
-RUN DJANGO_SETTINGS_MODULE=config.settings.production SECRET_KEY=build-only-not-used-at-runtime \
+# SECRET_KEY здесь только чтобы пройти require_secure_secret() при импорте
+# config.settings.production (нужен ей самой для сборки static-манифеста) — ключ
+# из рантайма контейнера этот шаг не видит и не использует. Обязан быть длиннее 50
+# символов, иначе тот же fail-fast, что защищает прод, роняет саму сборку образа.
+RUN SECRET_KEY=build-only-not-used-at-runtime-0000000000000000000 \
     ALLOWED_HOSTS=localhost CSRF_TRUSTED_ORIGINS=https://localhost \
     python manage.py collectstatic --noinput
 

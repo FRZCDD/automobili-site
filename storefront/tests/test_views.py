@@ -55,6 +55,20 @@ class LandingViewTests(SimpleTestCase):
         self.assertContains(response, '"@type": "Organization"')
         self.assertContains(response, '"@type": "FAQPage"')
 
+    def test_canonical_and_og_url_exclude_query_string(self) -> None:
+        # Этот же сайт сам ловит utm_source/utm_medium/utm_campaign
+        # (static/js/site.js, в форме заявки есть скрытые поля с тем же именем —
+        # поэтому здесь не blanket-проверка "utm_source нет на странице", а именно
+        # содержимое canonical/og:url): рекламная ссылка на лендинг с UTM-метками
+        # не должна породить формально другой canonical/og:url на себя же.
+        with (
+            patch.object(crm_client, "get_site_config", return_value=SAMPLE_CONFIG),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:landing"), {"utm_source": "yandex"})
+        self.assertContains(response, '<link rel="canonical" href="http://testserver/" />')
+        self.assertContains(response, 'property="og:url" content="http://testserver/"')
+
 
 class CarDetailViewTests(SimpleTestCase):
     def setUp(self) -> None:
@@ -91,6 +105,35 @@ class CarDetailViewTests(SimpleTestCase):
         ):
             response = self.client.get(reverse("storefront:car_detail", args=["kia-rio-2021"]))
         assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+
+    def test_unknown_site_slug_skips_car_lookup_entirely(self) -> None:
+        # get_site_config() первой и отдельно: если сайта нет в CRM, это не должно
+        # тратить ещё два запроса (get_car, get_cars) на страницу, которая всё
+        # равно окажется заглушкой недоступности.
+        with (
+            patch.object(crm_client, "get_site_config", return_value=None),
+            patch.object(crm_client, "get_car") as mock_get_car,
+            patch.object(crm_client, "get_cars") as mock_get_cars,
+        ):
+            response = self.client.get(reverse("storefront:car_detail", args=["kia-rio-2021"]))
+        assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+        mock_get_car.assert_not_called()
+        mock_get_cars.assert_not_called()
+
+    def test_og_tags_are_car_specific_not_landings(self) -> None:
+        # Расшаривание ссылки на конкретное авто (частый канал для авто-лидов —
+        # WhatsApp/Telegram) обязано показать заголовок и картинку этого авто, не
+        # og:title/og:image лендинга (car_detail.html переопределяет {% block og %}).
+        with (
+            patch.object(crm_client, "get_site_config", return_value=SAMPLE_CONFIG),
+            patch.object(crm_client, "get_car", return_value=SAMPLE_CAR),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:car_detail", args=["kia-rio-2021"]))
+        self.assertContains(response, 'property="og:type" content="product"')
+        self.assertContains(response, 'property="og:title" content="Kia Rio 2021 в кредит от 4,9% — купить')
+        self.assertContains(response, f'property="og:image" content="{SAMPLE_CAR["photo_url"]}"')
+        self.assertNotContains(response, SAMPLE_CONFIG["seo"]["title_landing"])
 
     def test_does_not_link_to_crms_own_car_url(self) -> None:
         # SAMPLE_CAR["url"] пойнтит на CRM (http://crm.invalid/cars/...) — вьюха не

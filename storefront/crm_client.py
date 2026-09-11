@@ -117,7 +117,16 @@ def get_cars() -> list[dict[str, Any]]:
     if cached is not _UNSET:
         return cached
     payload = _handle_json_or_404(_get(f"/api/v1/sites/{settings.SITE_SLUG}/cars/"))
-    cars = payload["cars"] if payload else []
+    if payload is None:
+        cars: list[dict[str, Any]] = []
+    else:
+        try:
+            cars = payload["cars"]
+        except (KeyError, TypeError) as exc:
+            # Контракт CRM (SiteCarsResponse) гарантирует это поле — расхождение
+            # означает версии CRM и этого сайта разошлись, не то, что сайта нет
+            # (это уже отдельно обработал _handle_json_or_404 через 404 -> None).
+            raise CrmClientError(HTTPStatus.INTERNAL_SERVER_ERROR, "CRM: ответ /cars/ без поля cars") from exc
     cache.set(key, cars, settings.SITE_CONFIG_CACHE_TTL_SECONDS)
     return cars
 
@@ -152,5 +161,12 @@ def submit_lead(
         raise CrmUnavailableError from exc
     if response.is_error:
         raise CrmClientError(response.status_code, _error_detail(response))
-    data = response.json()
-    return LeadSubmitResult(lead_id=data["lead_id"], message=data.get("message", ""))
+    try:
+        data = response.json()
+        lead_id = data["lead_id"]
+    except (KeyError, TypeError, ValueError) as exc:
+        # CreateLeadResponse (CRM) гарантирует lead_id на успешном ответе — расхождение
+        # значит версии CRM и этого сайта разошлись. Заявка, возможно, уже создана в
+        # CRM; сайту нужно сказать об этом честно (502), а не 500 на KeyError.
+        raise CrmClientError(HTTPStatus.INTERNAL_SERVER_ERROR, "CRM: ответ на создание лида без поля lead_id") from exc
+    return LeadSubmitResult(lead_id=lead_id, message=data.get("message", ""))

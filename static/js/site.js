@@ -37,9 +37,14 @@
     const carNameField = modal.querySelector("[data-lead-car-name]");
     const resultEl = modal.querySelector("[data-lead-result]");
     const submitBtn = modal.querySelector("[data-lead-submit]");
+    const titleEl = modal.querySelector("[data-lead-title]");
+    const defaultTitle = titleEl ? titleEl.textContent : "";
 
     function open(carName) {
       carNameField.value = carName || "";
+      // textContent, не innerHTML: carName приходит из data-атрибута карточки
+      // авто (в конечном счёте — из CRM), не должен трактоваться как разметка.
+      if (titleEl) titleEl.textContent = carName ? `Заявка на ${carName}` : defaultTitle;
       modal.querySelectorAll("[data-lead-utm]").forEach((input) => {
         input.value = storedUtm(input.dataset.leadUtm);
       });

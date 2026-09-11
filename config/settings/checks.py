@@ -8,13 +8,10 @@ default or too-short value there is silent until someone forges a submission.
 
 from django.core.exceptions import ImproperlyConfigured
 
-_INSECURE_DEFAULTS = frozenset(
-    {
-        "",
-        "django-insecure-local-development-key-12345",
-        "django-insecure-local-development-key-12345678901234567890",
-    },
-)
+# Обе строки вида "django-insecure-..." (config/settings/base.py, development.py) уже
+# покрыты проверкой ниже startswith("django-insecure-") — держать их здесь вторым
+# элементом того же множества было недостижимым дублированием.
+_INSECURE_DEFAULTS = frozenset({""})
 
 
 def require_secure_secret(name: str, value: str, *, min_len: int = 32) -> None:

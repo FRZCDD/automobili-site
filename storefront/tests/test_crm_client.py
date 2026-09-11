@@ -101,6 +101,19 @@ class GetCarsTests(SimpleTestCase):
         with patch.object(crm_client, "_client", _client_factory(handler)):
             assert crm_client.get_cars() == []
 
+    def test_malformed_payload_without_cars_key_raises_client_error(self) -> None:
+        # SiteCarsResponse (CRM) гарантирует поле "cars" на 200 — расхождение
+        # значит версии CRM и этого сайта разошлись; обязан всплыть как
+        # CrmClientError (-> 502 у вьюхи), а не как необработанный KeyError (-> 500).
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(HTTPStatus.OK, json={"unexpected": "shape"})
+
+        with (
+            patch.object(crm_client, "_client", _client_factory(handler)),
+            pytest.raises(crm_client.CrmClientError),
+        ):
+            crm_client.get_cars()
+
 
 @override_settings(SITE_SLUG="autocredit")
 class GetCarTests(SimpleTestCase):
@@ -174,7 +187,20 @@ class SubmitLeadTests(SimpleTestCase):
             patch.object(crm_client, "_client", _client_factory(handler)),
             pytest.raises(crm_client.CrmUnavailableError),
         ):
-                crm_client.submit_lead(name="Иван", phone="+79990000000")
+            crm_client.submit_lead(name="Иван", phone="+79990000000")
+
+    def test_malformed_success_response_without_lead_id_raises_client_error(self) -> None:
+        # CreateLeadResponse (CRM) гарантирует lead_id на успешном ответе; расхождение
+        # обязано всплыть как CrmClientError (-> 502), а не как KeyError (-> 500) —
+        # заявка, возможно, уже создана в CRM, сайту нужно сказать об этом честно.
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(HTTPStatus.CREATED, json={"status": "success"})
+
+        with (
+            patch.object(crm_client, "_client", _client_factory(handler)),
+            pytest.raises(crm_client.CrmClientError),
+        ):
+            crm_client.submit_lead(name="Иван", phone="+79990000000")
 
 
 class ErrorDetailTests(SimpleTestCase):

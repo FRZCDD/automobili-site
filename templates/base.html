@@ -6,7 +6,11 @@
 
   <title>{% block title %}{{ site.seo.title_landing|default:site.name }}{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}{{ site.seo.description_landing }}{% endblock %}" />
-  <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}" />
+  {# canonical_url — из storefront.context_processors, request.build_absolute_uri(request.path)
+     без query string: этот сайт сам ловит utm_source/utm_medium/utm_campaign
+     (static/js/site.js) — с query string каждая рекламная вариация ссылки стала бы для
+     поисковика формально другим URL с canonical на самого себя, а не на общий адрес страницы. #}
+  <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}" />
 
   {% if site.branding.favicon_url %}
     <link rel="icon" href="{{ site.branding.favicon_url }}" />
@@ -20,7 +24,7 @@
   <meta property="og:site_name" content="{{ site.name }}" />
   <meta property="og:title" content="{{ site.seo.title_landing|default:site.name }}" />
   <meta property="og:description" content="{{ site.seo.description_landing }}" />
-  <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+  <meta property="og:url" content="{{ canonical_url }}" />
   {% if site.seo.og_image_url %}<meta property="og:image" content="{{ site.seo.og_image_url }}" />{% endif %}
   <meta name="twitter:card" content="summary_large_image" />
   {% endblock %}

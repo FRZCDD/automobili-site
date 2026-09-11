@@ -67,6 +67,17 @@ class LeadSubmitViewTests(SimpleTestCase):
             response = self.client.post(self.url, {"name": "Иван", "phone": "+79990000000"})
         assert response.status_code == HTTPStatus.BAD_GATEWAY
 
+    def test_crm_error_with_nonstandard_status_code_does_not_crash(self) -> None:
+        # 521 (Cloudflare "web server is down") не входит в http.HTTPStatus — код
+        # обязан пройти через plain int lookup, не HTTPStatus(...), иначе сам
+        # обработчик ошибок CRM падает 500-й ровно в момент, когда CRM недоступна
+        # (регрессия на находку code-reviewer, ветка feat/initial-scaffold).
+        error = crm_client.CrmClientError(521, "origin server is down")
+        with patch.object(crm_client, "submit_lead", side_effect=error):
+            response = self.client.post(self.url, {"name": "Иван", "phone": "+79990000000"})
+        assert response.status_code == HTTPStatus.BAD_GATEWAY
+        assert response.json()["status"] == "error"
+
     def test_csrf_is_enforced(self) -> None:
         csrf_client = Client(enforce_csrf_checks=True)
         response = csrf_client.post(self.url, {"name": "Иван", "phone": "+79990000000"})

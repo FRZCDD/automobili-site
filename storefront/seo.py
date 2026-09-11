@@ -18,6 +18,7 @@ import re
 from typing import Any
 
 from django.http import HttpRequest
+from django.urls import reverse
 
 _TOKEN_RE = re.compile(r"\{([^{}]*)\}")
 _ALLOWED_TOKENS = frozenset({"brand", "model", "year", "price", "monthly"})
@@ -48,6 +49,25 @@ def car_seo_values(car: dict[str, Any]) -> dict[str, object]:
         "price": car["price"],
         "monthly": car["monthly_payment"],
     }
+
+
+def car_page_title(config: dict[str, Any], car: dict[str, Any]) -> str:
+    """``<title>``/``og:title`` карточки авто: сначала шаблон из CRM с подставленными
+    данными этого авто, если оператор его не заполнил — собственный `meta_title`
+    авто из CRM, а если и его нет — короткое «Марка Модель Год». Три уровня
+    фолбэка, а не один, потому что оба источника в CRM — необязательные текстовые
+    поля админки, оставленные пустыми на только что заведённом сайте/авто не
+    должны обернуться пустым ``<title>``."""
+    values = car_seo_values(car)
+    template = config["seo"]["title_car_template"]
+    fallback = car.get("meta_title") or f"{car['brand']} {car['model']} {car['year']}"
+    return render_seo_template(template, **values) or fallback
+
+
+def car_page_description(config: dict[str, Any], car: dict[str, Any]) -> str:
+    values = car_seo_values(car)
+    template = config["seo"]["description_car_template"]
+    return render_seo_template(template, **values) or car.get("meta_description") or ""
 
 
 def build_organization_jsonld(config: dict[str, Any]) -> dict[str, Any]:
@@ -110,12 +130,18 @@ def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str
     }
     if car.get("photo_url"):
         product["image"] = car["photo_url"]
+    landing_url = request.build_absolute_uri(reverse("storefront:landing"))
     breadcrumb = {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
+        # Три уровня — ровно то, что показывает видимая хлебная крошка на странице
+        # (Главная / Каталог / <авто>, templates/car_detail.html): структурированные
+        # данные обязаны совпадать с видимым содержимым (требование Google к rich
+        # results), а не молчаливо укорачивать реальную навигацию.
         "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Главная", "item": request.build_absolute_uri("/")},
-            {"@type": "ListItem", "position": 2, "name": f"{car['brand']} {car['model']}", "item": car_url},
+            {"@type": "ListItem", "position": 1, "name": "Главная", "item": landing_url},
+            {"@type": "ListItem", "position": 2, "name": "Каталог", "item": f"{landing_url}#catalog"},
+            {"@type": "ListItem", "position": 3, "name": f"{car['brand']} {car['model']}", "item": car_url},
         ],
     }
     return json.dumps([organization, product, breadcrumb], ensure_ascii=False)

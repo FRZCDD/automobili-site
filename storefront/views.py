@@ -44,33 +44,32 @@ class LandingView(View):
 
 class CarDetailView(View):
     def get(self, request: HttpRequest, car_slug: str) -> HttpResponse:
+        # get_site_config() первым и отдельно: если для SITE_SLUG нет сайта в CRM,
+        # это ошибка деплоя, не зависящая от car_slug — нет смысла тратить ещё два
+        # запроса к CRM (get_car, get_cars) на страницу, которая всё равно окажется
+        # заглушкой недоступности.
         try:
             config = crm_client.get_site_config()
-            car = crm_client.get_car(car_slug)
-            cars = crm_client.get_cars()
         except (crm_client.CrmUnavailableError, crm_client.CrmClientError):
             return _unavailable(request)
         if config is None:
+            return _unavailable(request)
+
+        try:
+            car = crm_client.get_car(car_slug)
+            cars = crm_client.get_cars()
+        except (crm_client.CrmUnavailableError, crm_client.CrmClientError):
             return _unavailable(request)
         if car is None:
             return render(request, "errors/car_not_found.html", status=HTTPStatus.NOT_FOUND)
 
         car_url = request.build_absolute_uri(reverse("storefront:car_detail", args=[car_slug]))
-        seo_values = seo.car_seo_values(car)
-        title = seo.render_seo_template(config["seo"]["title_car_template"], **seo_values) or car.get(
-            "meta_title",
-        ) or f"{car['brand']} {car['model']} {car['year']}"
-        description = seo.render_seo_template(
-            config["seo"]["description_car_template"],
-            **seo_values,
-        ) or car.get("meta_description", "")
-
         context = {
             "site": config,
             "car": car,
             "related_cars": [c for c in cars if c["slug"] != car_slug][:3],
-            "seo_title": title,
-            "seo_description": description,
+            "seo_title": seo.car_page_title(config, car),
+            "seo_description": seo.car_page_description(config, car),
             "car_url": car_url,
             "jsonld": seo.build_car_jsonld(request, config, car, car_url),
         }
@@ -113,7 +112,12 @@ class LeadSubmitView(View):
         except crm_client.CrmClientError as exc:
             passthrough_statuses = {HTTPStatus.BAD_REQUEST, HTTPStatus.TOO_MANY_REQUESTS}
             status = exc.status_code if exc.status_code in passthrough_statuses else HTTPStatus.BAD_GATEWAY
-            message = _LEAD_ERROR_MESSAGES.get(HTTPStatus(exc.status_code), _DEFAULT_LEAD_ERROR_MESSAGE)
+            # exc.status_code — plain int (CRM/прокси может вернуть нестандартный код
+            # вроде 521-524, как раз в момент сбоя), поэтому не заворачивать в
+            # HTTPStatus(...) — тот кидает ValueError на неизвестном коде, и обработчик
+            # ошибок CRM сам уронит запрос в 500. HTTPStatus — IntEnum, .get() со
+            # значениями-ключами HTTPStatus.X корректно матчит и обычный int.
+            message = _LEAD_ERROR_MESSAGES.get(exc.status_code, _DEFAULT_LEAD_ERROR_MESSAGE)
             return JsonResponse({"status": "error", "message": message}, status=status)
         return JsonResponse(
             {"status": "success", "message": result.message, "lead_id": result.lead_id},
@@ -136,8 +140,6 @@ def sitemap_xml(request: HttpRequest) -> HttpResponse:
         cars = crm_client.get_cars()
     except (crm_client.CrmUnavailableError, crm_client.CrmClientError):
         cars = []
-    urls.extend(
-        request.build_absolute_uri(reverse("storefront:car_detail", args=[car["slug"]])) for car in cars
-    )
+    urls.extend(request.build_absolute_uri(reverse("storefront:car_detail", args=[car["slug"]])) for car in cars)
     body = render_to_string("sitemap.xml", {"urls": urls})
     return HttpResponse(body, content_type="application/xml")
