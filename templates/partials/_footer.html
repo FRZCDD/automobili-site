@@ -1,0 +1,39 @@
+{% load storefront_extras %}
+<footer class="border-t border-slate-800 mt-16">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-sm text-slate-400">
+    <div>
+      <div class="text-lg font-extrabold text-white mb-2">
+        <span class="text-blue-500">{{ site.branding.logo_text_primary }}</span>{{ site.branding.logo_text_secondary }}
+      </div>
+      <p>{{ site.branding.slogan }}</p>
+    </div>
+
+    <div>
+      <p class="text-slate-200 font-semibold mb-2">Контакты</p>
+      {% if site.contacts.phone %}<p><a href="tel:{{ site.contacts.phone|phone_href }}" class="hover:text-white transition">{{ site.contacts.phone }}</a></p>{% endif %}
+      {% if site.contacts.phone_hours %}<p>{{ site.contacts.phone_hours }}</p>{% endif %}
+      {% if site.contacts.email %}<p><a href="mailto:{{ site.contacts.email }}" class="hover:text-white transition">{{ site.contacts.email }}</a></p>{% endif %}
+      {% if site.contacts.address %}<p>{{ site.contacts.address }}</p>{% endif %}
+    </div>
+
+    <div>
+      <p class="text-slate-200 font-semibold mb-2">Реквизиты</p>
+      {% if site.contacts.legal_name %}<p>{{ site.contacts.legal_name }}</p>{% endif %}
+      {% if site.contacts.inn %}<p>ИНН {{ site.contacts.inn }}</p>{% endif %}
+      {% if site.contacts.ogrn %}<p>ОГРН {{ site.contacts.ogrn }}</p>{% endif %}
+      {% if site.contacts.privacy_policy_url %}
+        <p class="mt-2"><a href="{{ site.contacts.privacy_policy_url }}" class="hover:text-white transition underline underline-offset-2">Политика конфиденциальности</a></p>
+      {% endif %}
+    </div>
+
+    <div>
+      <p class="text-slate-200 font-semibold mb-2">Навигация</p>
+      <p><a href="{% url 'storefront:landing' %}#catalog" class="hover:text-white transition">Каталог автомобилей</a></p>
+      <p><a href="{% url 'storefront:landing' %}#calculator" class="hover:text-white transition">Кредитный калькулятор</a></p>
+      <p><a href="{% url 'storefront:landing' %}#faq" class="hover:text-white transition">Частые вопросы</a></p>
+    </div>
+  </div>
+  <div class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+    © {% now "Y" %} {{ site.branding.logo_text_primary }}{{ site.branding.logo_text_secondary }}. Не публичная оферта. Решение банка носит предварительный характер.
+  </div>
+</footer>

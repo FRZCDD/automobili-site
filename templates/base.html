@@ -1,0 +1,48 @@
+{% load static %}<!doctype html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>{% block title %}{{ site.seo.title_landing|default:site.name }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ site.seo.description_landing }}{% endblock %}" />
+  <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}" />
+
+  {% if site.branding.favicon_url %}
+    <link rel="icon" href="{{ site.branding.favicon_url }}" />
+  {% else %}
+    {# Пустой data-URI, а не молчание: без него браузер сам дёргает /favicon.ico и получает 404 в логах на каждый визит. #}
+    <link rel="icon" href="data:," />
+  {% endif %}
+
+  {% block og %}
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="{{ site.name }}" />
+  <meta property="og:title" content="{{ site.seo.title_landing|default:site.name }}" />
+  <meta property="og:description" content="{{ site.seo.description_landing }}" />
+  <meta property="og:url" content="{{ request.build_absolute_uri }}" />
+  {% if site.seo.og_image_url %}<meta property="og:image" content="{{ site.seo.og_image_url }}" />{% endif %}
+  <meta name="twitter:card" content="summary_large_image" />
+  {% endblock %}
+
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}" />
+
+  {% if jsonld %}<script type="application/ld+json">{{ jsonld|safe }}</script>{% endif %}
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-darkbg text-slate-200 antialiased">
+  {% include "partials/_header.html" %}
+
+  <main class="pt-16">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "partials/_footer.html" %}
+  {% include "partials/_lead_modal.html" %}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/imask/7.6.1/imask.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+  <script src="{% static 'js/site.js' %}" defer></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

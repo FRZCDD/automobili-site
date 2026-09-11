@@ -1,0 +1,29 @@
+{% load storefront_extras %}
+<header class="fixed top-0 inset-x-0 z-40 backdrop-blur bg-darkbg/80 border-b border-slate-800">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <a href="{% url 'storefront:landing' %}" class="flex items-center gap-2 shrink-0">
+      {% if site.branding.logo_image_url %}
+        <img src="{{ site.branding.logo_image_url }}" alt="{{ site.name }}" class="h-8 w-auto" />
+      {% else %}
+        <span class="text-xl font-extrabold tracking-tight">
+          <span class="{% if site.branding.logo_accent == 'primary' %}text-blue-500{% else %}text-white{% endif %}">{{ site.branding.logo_text_primary }}</span
+          ><span class="{% if site.branding.logo_accent == 'secondary' %}text-blue-500{% else %}text-white{% endif %}">{{ site.branding.logo_text_secondary }}</span>
+        </span>
+      {% endif %}
+    </a>
+
+    <nav class="hidden md:flex items-center gap-6 text-sm text-slate-300">
+      <a href="{% url 'storefront:landing' %}#catalog" class="hover:text-white transition">Каталог</a>
+      <a href="{% url 'storefront:landing' %}#calculator" class="hover:text-white transition">Калькулятор</a>
+      <a href="{% url 'storefront:landing' %}#faq" class="hover:text-white transition">Вопросы</a>
+      {% if site.contacts.phone %}
+        <a href="tel:{{ site.contacts.phone|phone_href }}" class="hover:text-white transition font-medium">{{ site.contacts.phone }}</a>
+      {% endif %}
+    </nav>
+
+    <button type="button" data-open-lead-modal
+            class="rounded-xl bg-blue-600 hover:bg-blue-500 transition text-white text-sm font-medium px-4 py-2 shadow-lg shadow-blue-600/20">
+      Оставить заявку
+    </button>
+  </div>
+</header>

@@ -1,0 +1,66 @@
+[project]
+name = "automobili-site"
+version = "0.1.0"
+description = "Тонкий Django-рендерер публичной витрины автокредита: конфиг, каталог и приём лида идут в CRM automobili-zaluppini по HTTP, своей базы данных нет."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0.7,<6.1",
+    "httpx>=0.28.1",
+    "python-decouple>=3.8",
+    "structlog>=26.1.0",
+    "whitenoise>=6.8.0",
+    "gunicorn>=26.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    # Только для pytest.raises(...) в тестах на исключения (PT027) — тесты сами
+    # по-прежнему запускаются manage.py test, не pytest-раннером.
+    "pytest>=8.3.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "CPY001",
+    "T201",
+    "RUF002",
+    "RUF003",
+    "TRY003",
+    "ARG",
+    "ANN",
+    "D",
+    "EM101",
+    "EM102",
+    "PT001",
+    "PT023",
+    "SIM108",
+    "RET505",
+    "PLR0913",
+    "SIM103",
+    "ISC003",
+    "SIM114",
+    "TC001",
+    "TC002",
+    "TC003",
+    "TC006",
+    "UP038",
+    "RUF001",
+    "DJ001",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*" = ["RUF012", "E501"]
+"**/tests/*" = ["S101"]

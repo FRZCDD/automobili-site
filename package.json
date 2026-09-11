@@ -1,0 +1,11 @@
+{
+  "name": "automobili-site-assets",
+  "private": true,
+  "description": "Сборка Tailwind CSS для шаблонов Django. Ставится только на этапе сборки образа.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.19"
+  }
+}

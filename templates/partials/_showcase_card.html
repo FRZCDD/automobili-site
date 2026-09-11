@@ -1,0 +1,28 @@
+{% load storefront_extras %}
+<article class="rounded-2xl border border-slate-700 bg-cardbg overflow-hidden hover:border-blue-600/50 hover:shadow-lg hover:shadow-blue-600/20 transition group">
+  <a href="{% url 'storefront:car_detail' car.slug %}" class="block aspect-[4/3] bg-darkbg overflow-hidden">
+    {% if car.photo_url %}
+      <img src="{{ car.photo_url }}" alt="{{ car.brand }} {{ car.model }} {{ car.year }}" loading="lazy"
+           class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+    {% else %}
+      <div class="w-full h-full flex items-center justify-center text-slate-600 text-sm">Фото скоро появится</div>
+    {% endif %}
+  </a>
+  <div class="p-4">
+    {% if car.is_new %}
+      <span class="inline-block text-xs font-semibold text-emerald-400 bg-emerald-400/10 rounded-full px-2 py-0.5 mb-2">Новый</span>
+    {% else %}
+      <span class="inline-block text-xs font-semibold text-slate-300 bg-slate-700/50 rounded-full px-2 py-0.5 mb-2">С пробегом</span>
+    {% endif %}
+    <h3 class="font-semibold text-white mb-0.5">
+      <a href="{% url 'storefront:car_detail' car.slug %}" class="hover:text-blue-400 transition">{{ car.brand }} {{ car.model }}</a>
+    </h3>
+    <p class="text-sm text-slate-400 mb-3">{{ car.year }} год{% if not car.is_new %} · {{ car.mileage|rub }} км{% endif %} · {{ car.transmission_display }}</p>
+    <p class="text-xl font-bold text-emerald-400 mb-1">{{ car.price|rub }} ₽</p>
+    <p class="text-xs text-slate-400 mb-3">в кредит от {{ car.monthly_payment|rub }} ₽/мес</p>
+    <button type="button" data-open-lead-modal data-car-name="{{ car.brand }} {{ car.model }} {{ car.year }}"
+            class="w-full rounded-xl bg-blue-600/10 hover:bg-blue-600 border border-blue-600/40 hover:border-blue-600 transition text-blue-400 hover:text-white text-sm font-medium py-2">
+      Оставить заявку
+    </button>
+  </div>
+</article>

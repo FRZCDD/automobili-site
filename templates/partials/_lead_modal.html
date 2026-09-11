@@ -1,0 +1,39 @@
+<div id="lead-modal" class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto py-10 px-4" data-lead-modal>
+  <div class="fixed inset-0 bg-black/60" data-close-lead-modal></div>
+  <div class="relative w-full max-w-md rounded-2xl bg-cardbg border border-slate-700 p-6 shadow-2xl shadow-blue-600/20">
+    <button type="button" data-close-lead-modal aria-label="Закрыть"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white transition">✕</button>
+    <h3 class="text-xl font-bold text-white mb-1" data-lead-title>Оставить заявку</h3>
+    <p class="text-sm text-slate-400 mb-4">Перезвоним и пришлём предварительное решение банка за 5 минут.</p>
+
+    <form data-lead-form novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="car_name" data-lead-car-name value="" />
+      <input type="hidden" name="utm_source" data-lead-utm="utm_source" value="" />
+      <input type="hidden" name="utm_medium" data-lead-utm="utm_medium" value="" />
+      <input type="hidden" name="utm_campaign" data-lead-utm="utm_campaign" value="" />
+
+      <label class="block text-sm text-slate-300 mb-1" for="lead-name">Имя</label>
+      <input id="lead-name" type="text" name="name" required autocomplete="name"
+             class="w-full rounded-xl bg-darkbg border border-slate-700 px-3 py-2.5 text-white mb-3 focus:outline-none focus:border-blue-500"
+             placeholder="Как к вам обращаться" />
+
+      <label class="block text-sm text-slate-300 mb-1" for="lead-phone">Телефон</label>
+      <input id="lead-phone" type="tel" name="phone" required autocomplete="tel" data-phone-input
+             class="w-full rounded-xl bg-darkbg border border-slate-700 px-3 py-2.5 text-white mb-4 focus:outline-none focus:border-blue-500"
+             placeholder="+7 ___ ___-__-__" />
+
+      <button type="submit" data-lead-submit
+              class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 transition text-white font-semibold py-2.5 shadow-lg shadow-blue-600/20 disabled:opacity-60">
+        Отправить заявку
+      </button>
+
+      <p class="text-xs text-slate-500 mt-3">
+        Нажимая «Отправить», вы соглашаетесь с
+        <a href="{{ site.contacts.privacy_policy_url|default:'#' }}" class="underline underline-offset-2">политикой конфиденциальности</a>.
+      </p>
+
+      <p class="hidden text-sm mt-3 rounded-lg px-3 py-2" data-lead-result></p>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,64 @@
+{% load storefront_extras %}
+<section id="calculator" class="max-w-6xl mx-auto px-4 sm:px-6 py-16 scroll-mt-20">
+  <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2">Кредитный калькулятор</h2>
+  <p class="text-slate-400 mb-8">Ставка от {{ site.calc.annual_rate }}% годовых. Без КАСКО и первоначального взноса — при желании их можно добавить.</p>
+
+  <div class="grid lg:grid-cols-2 gap-8 rounded-2xl border border-slate-700 bg-cardbg p-6 sm:p-8"
+       data-calculator
+       data-annual-rate="{{ site.calc.annual_rate }}"
+       data-price-min="{{ site.calc.price.min }}" data-price-max="{{ site.calc.price.max }}"
+       data-price-step="{{ site.calc.price.step }}" data-price-default="{{ site.calc.price.default }}"
+       data-down-min="{{ site.calc.down_pct.min }}" data-down-max="{{ site.calc.down_pct.max }}"
+       data-down-step="{{ site.calc.down_pct.step }}" data-down-default="{{ site.calc.down_pct.default }}"
+       data-term-min="{{ site.calc.term.min }}" data-term-max="{{ site.calc.term.max }}"
+       data-term-step="{{ site.calc.term.step }}" data-term-default="{{ site.calc.term.default }}">
+
+    <div class="space-y-6">
+      <div>
+        <div class="flex justify-between text-sm text-slate-300 mb-2">
+          <span>Стоимость автомобиля</span>
+          <span class="font-semibold text-white" data-calc-price-value></span>
+        </div>
+        <input type="range" data-calc-price class="w-full accent-blue-500" />
+      </div>
+      <div>
+        <div class="flex justify-between text-sm text-slate-300 mb-2">
+          <span>Первоначальный взнос</span>
+          <span class="font-semibold text-white" data-calc-down-value></span>
+        </div>
+        <input type="range" data-calc-down class="w-full accent-blue-500" />
+      </div>
+      <div>
+        <div class="flex justify-between text-sm text-slate-300 mb-2">
+          <span>Срок кредита</span>
+          <span class="font-semibold text-white" data-calc-term-value></span>
+        </div>
+        <input type="range" data-calc-term class="w-full accent-blue-500" />
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center justify-center gap-4">
+      <div class="relative w-44 h-44">
+        <canvas data-calc-chart></canvas>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span class="text-xs text-slate-400">платёж/мес</span>
+          <span class="text-2xl font-bold text-emerald-400" data-calc-monthly></span>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 w-full text-center text-sm">
+        <div class="rounded-xl bg-darkbg border border-slate-700 py-3">
+          <p class="text-slate-400">Сумма кредита</p>
+          <p class="font-semibold text-white" data-calc-principal></p>
+        </div>
+        <div class="rounded-xl bg-darkbg border border-slate-700 py-3">
+          <p class="text-slate-400">Переплата</p>
+          <p class="font-semibold text-white" data-calc-overpay></p>
+        </div>
+      </div>
+      <button type="button" data-open-lead-modal
+              class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 transition text-white font-semibold py-2.5 shadow-lg shadow-blue-600/20">
+        Оформить на этих условиях
+      </button>
+    </div>
+  </div>
+</section>

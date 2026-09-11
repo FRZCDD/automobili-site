@@ -1,0 +1,33 @@
+version: "3"
+
+tasks:
+  dev:
+    desc: "Run the dev server (host, config.settings.development)"
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    cmds:
+      - uv run python manage.py runserver 0.0.0.0:8000
+
+  assets:build:
+    desc: "Собрать Tailwind CSS (нужен Node; в образе то же самое делает build-стадия Dockerfile)"
+    cmds:
+      - npm install --no-audit --no-fund
+      - npm run build:css
+
+  test:
+    desc: "Run the test suite (SimpleTestCase, no database needed)"
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+    cmds:
+      - uv run python manage.py test storefront
+
+  lint:
+    desc: "Run Ruff"
+    cmds:
+      - uv run ruff check .
+
+  lint-fix:
+    desc: "Run Ruff with autofix + formatter"
+    cmds:
+      - uv run ruff check . --fix
+      - uv run ruff format .

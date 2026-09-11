@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+
+# Собранный Tailwind CSS — генерируется build-стадией Dockerfile / task assets:build,
+# в репозитории не хранится (см. static/src/input.css — исходник).
+static/css/tailwind.css
+node_modules/
+
+staticfiles/
+*.sqlite3
+
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+.idea/
+.vscode/
+
+# Локальный дев-конфиг превью (пути/порты конкретной машины) — та же конвенция, что
+# в automobili-zaluppini/.gitignore.
+.claude/launch.json

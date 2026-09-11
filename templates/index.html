@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load storefront_extras %}
+
+{% block title %}{{ site.seo.title_landing|default:site.name }}{% endblock %}
+{% block meta_description %}{{ site.seo.description_landing }}{% endblock %}
+
+{% block content %}
+<section class="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-20 text-center">
+  <p class="text-blue-500 text-sm font-semibold tracking-wide uppercase mb-4">Автокредит онлайн</p>
+  <h1 class="text-3xl sm:text-5xl font-extrabold text-white leading-tight mb-5 max-w-3xl mx-auto">
+    {{ site.branding.hero_title|default:"Автокредит от 4,9% — оформление онлайн за 5 минут" }}
+  </h1>
+  <p class="text-slate-400 text-lg max-w-2xl mx-auto mb-8">{{ site.branding.slogan }}</p>
+  <button type="button" data-open-lead-modal
+          class="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-500 transition text-white font-semibold px-6 py-3 shadow-lg shadow-blue-600/20">
+    Оставить заявку
+  </button>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto mt-14 text-left">
+    <div class="rounded-2xl border border-slate-700 bg-cardbg p-4">
+      <p class="text-2xl font-bold text-emerald-400">{{ site.calc.annual_rate }}%</p>
+      <p class="text-xs text-slate-400 mt-1">ставка годовых</p>
+    </div>
+    <div class="rounded-2xl border border-slate-700 bg-cardbg p-4">
+      <p class="text-2xl font-bold text-white">0 ₽</p>
+      <p class="text-xs text-slate-400 mt-1">первый взнос</p>
+    </div>
+    <div class="rounded-2xl border border-slate-700 bg-cardbg p-4">
+      <p class="text-2xl font-bold text-white">2</p>
+      <p class="text-xs text-slate-400 mt-1">документа</p>
+    </div>
+    <div class="rounded-2xl border border-slate-700 bg-cardbg p-4">
+      <p class="text-2xl font-bold text-white">5 мин</p>
+      <p class="text-xs text-slate-400 mt-1">решение банка</p>
+    </div>
+  </div>
+</section>
+
+<section class="border-y border-slate-800 bg-cardbg/40">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div>
+      <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 font-bold mb-3">₽</div>
+      <p class="text-white font-semibold mb-1">Без первого взноса</p>
+      <p class="text-sm text-slate-400">Не нужно вынимать деньги из накоплений — забираете автомобиль сегодня.</p>
+    </div>
+    <div>
+      <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 font-bold mb-3">✓</div>
+      <p class="text-white font-semibold mb-1">Без КАСКО</p>
+      <p class="text-sm text-slate-400">Полис не обязателен для одобрения — можно добавить его в рассрочку по желанию.</p>
+    </div>
+    <div>
+      <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 font-bold mb-3">2</div>
+      <p class="text-white font-semibold mb-1">По двум документам</p>
+      <p class="text-sm text-slate-400">Паспорт и один документ на выбор — без справок о доходах и поручителей.</p>
+    </div>
+    <div>
+      <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 font-bold mb-3">⏱</div>
+      <p class="text-white font-semibold mb-1">Решение за 5 минут</p>
+      <p class="text-sm text-slate-400">Заявка онлайн, ответ банка приходит быстро — ставку можно зафиксировать сразу.</p>
+    </div>
+  </div>
+</section>
+
+<section id="catalog" class="max-w-6xl mx-auto px-4 sm:px-6 py-16 scroll-mt-20">
+  <h2 class="text-2xl sm:text-3xl font-bold text-white mb-8">Автомобили в кредит</h2>
+
+  {% if new_cars %}
+    <h3 class="text-lg font-semibold text-slate-200 mb-4">Новые</h3>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+      {% for car in new_cars %}{% include "partials/_showcase_card.html" %}{% endfor %}
+    </div>
+  {% endif %}
+
+  {% if used_cars %}
+    <h3 class="text-lg font-semibold text-slate-200 mb-4">С пробегом</h3>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for car in used_cars %}{% include "partials/_showcase_card.html" %}{% endfor %}
+    </div>
+  {% endif %}
+
+  {% if not cars %}
+    <p class="text-slate-400">Каталог обновляется — заявку на подбор можно оставить уже сейчас.</p>
+  {% endif %}
+</section>
+
+{% include "partials/_calculator.html" %}
+{% include "partials/_faq.html" %}
+
+{% if site.seo.bottom_text %}
+{% comment %}
+  Стили — только базовые Tailwind-утилиты через arbitrary variants ([&_x]:...), без
+  плагина @tailwindcss/typography: проект держит только ядро Tailwind без плагинов.
+  ({# #} — однострочный тег Django, многострочные комментарии здесь не работают.)
+{% endcomment %}
+<section class="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-slate-400 leading-relaxed
+                 [&_p]:mb-4 [&_a]:text-blue-400 [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-blue-300">
+  {{ site.seo.bottom_text|safe }}
+</section>
+{% endif %}
+{% endblock %}
