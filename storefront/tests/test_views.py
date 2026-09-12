@@ -69,6 +69,32 @@ class LandingViewTests(SimpleTestCase):
         self.assertContains(response, '<link rel="canonical" href="http://testserver/" />')
         self.assertContains(response, 'property="og:url" content="http://testserver/"')
 
+    def test_bottom_text_legitimate_link_is_rendered(self) -> None:
+        # SAMPLE_CONFIG["seo"]["bottom_text"] (storefront/tests/factories.py) — форма,
+        # которую реально присылает CRM: ссылка должна остаться кликабельной после
+        # санитизации, не просто "не сломаться".
+        with (
+            patch.object(crm_client, "get_site_config", return_value=SAMPLE_CONFIG),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:landing"))
+        self.assertContains(response, '<a href="/cars/kia-rio-2021/">Kia Rio</a>')
+
+    def test_bottom_text_script_payload_is_sanitized(self) -> None:
+        # {{ site.seo.bottom_text|safe }} в templates/index.html рендерит это поле
+        # как есть — без санитизации в LandingView.get() это был бы обычный XSS.
+        malicious_config = {
+            **SAMPLE_CONFIG,
+            "seo": {**SAMPLE_CONFIG["seo"], "bottom_text": "<p>Текст</p><script>alert(1)</script>"},
+        }
+        with (
+            patch.object(crm_client, "get_site_config", return_value=malicious_config),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:landing"))
+        self.assertNotContains(response, "<script>alert(1)</script>")
+        self.assertContains(response, "Текст")
+
 
 class CarDetailViewTests(SimpleTestCase):
     def setUp(self) -> None:

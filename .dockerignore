@@ -1,0 +1,31 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Собранный Tailwind CSS — как и в .gitignore, не нужен в builder-стадии как
+# сырьё: свежую сборку кладёт assets-стадия Dockerfile из static/src.
+static/css/tailwind.css
+node_modules/
+
+staticfiles/
+*.sqlite3
+
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+.idea/
+.vscode/
+
+# Локальный дев-тулинг, не нужен внутри образа.
+.claude/
+README.md
+
+# Секреты и история репозитория не должны попасть в build-контекст (COPY . . в
+# builder-стадии Dockerfile): .env* шире, чем .gitignore-шный .env — сюда же
+# попадают .env.local/.env.production и т.п., если кто-то заведёт их локально.
+.env*
+.git/
+.gitignore
+.dockerignore

@@ -10,6 +10,7 @@ from storefront.seo import (
     car_page_description,
     car_page_title,
     render_seo_template,
+    sanitize_rich_text,
 )
 
 from .factories import SAMPLE_CAR, SAMPLE_CONFIG
@@ -61,6 +62,22 @@ class BuildLandingJsonldTests(SimpleTestCase):
         types = [item["@type"] for item in graph]
         assert "FAQPage" not in types
 
+    def test_faq_answer_script_breakout_is_escaped(self) -> None:
+        # json.dumps() сам по себе не экранирует < > & — без этого CRM-текст с
+        # "</script>" разорвал бы <script type="application/ld+json"> тег, в который
+        # jsonld попадает через {{ jsonld|safe }} в templates/base.html.
+        payload = "</script><script>alert(1)</script>"
+        config = {**SAMPLE_CONFIG, "faq": [{"question": "Q", "answer": payload}]}
+        request = RequestFactory().get("/")
+        raw = build_landing_jsonld(request, config)
+        assert "</script>" not in raw
+        assert "<script>" not in raw
+        graph = json.loads(raw)["@graph"]
+        faq_page = next(item for item in graph if item["@type"] == "FAQPage")
+        # После json.loads() исходный текст восстанавливается один в один — экранирование
+        # меняет только сериализованную форму, не сами данные.
+        assert faq_page["mainEntity"][0]["acceptedAnswer"]["text"] == payload
+
 
 class BuildCarJsonldTests(SimpleTestCase):
     def test_includes_organization_product_and_breadcrumb(self) -> None:
@@ -77,6 +94,18 @@ class BuildCarJsonldTests(SimpleTestCase):
         product = next(item for item in items if item["@type"] == "Product")
         assert product["offers"]["url"] == car_url
         assert product["offers"]["url"] != SAMPLE_CAR["url"]
+
+    def test_description_script_breakout_is_escaped(self) -> None:
+        payload = "</script><script>alert(1)</script>"
+        car = {**SAMPLE_CAR, "description": payload}
+        request = RequestFactory().get("/cars/kia-rio-2021/")
+        car_url = "http://testserver/cars/kia-rio-2021/"
+        raw = build_car_jsonld(request, SAMPLE_CONFIG, car, car_url)
+        assert "</script>" not in raw
+        assert "<script>" not in raw
+        items = json.loads(raw)
+        product = next(item for item in items if item["@type"] == "Product")
+        assert product["description"] == payload
 
     def test_breadcrumb_has_three_levels_matching_visible_nav(self) -> None:
         # templates/car_detail.html показывает Главная / Каталог / <авто> — структурные
@@ -122,3 +151,40 @@ class CarPageDescriptionTests(SimpleTestCase):
         config = {**SAMPLE_CONFIG, "seo": {**SAMPLE_CONFIG["seo"], "description_car_template": ""}}
         car = {**SAMPLE_CAR, "meta_description": ""}
         assert car_page_description(config, car) == ""
+
+
+class SanitizeRichTextTests(SimpleTestCase):
+    """Allow-list санитайзер CRM-редактируемого ``site.seo.bottom_text``
+    (templates/index.html рендерит его через ``|safe``)."""
+
+    def test_empty_input_returns_empty_string(self) -> None:
+        assert sanitize_rich_text("") == ""
+
+    def test_legitimate_bottom_text_is_preserved(self) -> None:
+        # storefront/tests/factories.py — форма bottom_text, которую реально
+        # присылает CRM: параграф с обычной ссылкой на карточку авто этого сайта.
+        html_text = SAMPLE_CONFIG["seo"]["bottom_text"]
+        assert sanitize_rich_text(html_text) == html_text
+
+    def test_script_tag_and_its_content_are_stripped(self) -> None:
+        result = sanitize_rich_text("<p>Текст <script>alert(document.cookie)</script> ещё текст</p>")
+        assert "<script" not in result
+        assert "alert" not in result
+        assert "Текст" in result
+        assert "ещё текст" in result
+
+    def test_disallowed_tag_is_stripped_but_its_attributes_cannot_leak_as_text(self) -> None:
+        result = sanitize_rich_text('<p>Клик <img src="x" onerror="alert(1)"> тут</p>')
+        assert "onerror" not in result
+        assert "<img" not in result
+        assert "Клик" in result
+        assert "тут" in result
+
+    def test_javascript_href_is_dropped_but_tag_and_text_are_kept(self) -> None:
+        result = sanitize_rich_text('<a href="javascript:alert(1)">Клик</a>')
+        assert "javascript:" not in result
+        assert result == "<a>Клик</a>"
+
+    def test_relative_href_is_kept(self) -> None:
+        result = sanitize_rich_text('<a href="/cars/kia-rio-2021/">Kia Rio</a>')
+        assert result == '<a href="/cars/kia-rio-2021/">Kia Rio</a>'

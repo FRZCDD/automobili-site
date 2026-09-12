@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import json
 import re
+from html import escape
+from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urlparse
 
 from django.http import HttpRequest
 from django.urls import reverse
@@ -70,6 +73,89 @@ def car_page_description(config: dict[str, Any], car: dict[str, Any]) -> str:
     return render_seo_template(template, **values) or car.get("meta_description") or ""
 
 
+_RICH_TEXT_ALLOWED_TAGS = frozenset({"p", "a", "br", "strong", "em", "b", "i", "ul", "ol", "li"})
+# script/style — единственные теги, чьё *содержимое* тоже выбрасывается, не только
+# сам тег: это не разметка, а код/CSS, и показать его как обычный видимый текст
+# было бы такой же утечкой, как оставить его исполняемым.
+_RICH_TEXT_DROP_CONTENT_TAGS = frozenset({"script", "style"})
+_RICH_TEXT_VOID_TAGS = frozenset({"br"})
+
+
+def _is_safe_rich_text_href(href: str) -> bool:
+    """``javascript:``/``data:`` — обычный способ получить исполнение кода через
+    <a href> в HTML, который не идёт через <script>. Разрешены только http(s) и
+    настоящие относительные пути: URL вида "//evil.example/x" формально не имеет
+    схемы, но имеет netloc — это protocol-relative ссылка на чужой хост, а не
+    относительный путь на этом сайте, поэтому тоже отклоняется."""
+    try:
+        parsed = urlparse(href)
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") or (parsed.scheme == "" and not parsed.netloc)
+
+
+class _RichTextSanitizer(HTMLParser):
+    """Allow-list санитайзер HTML для CRM-редактируемого ``site.seo.bottom_text``
+    (см. sanitize_rich_text ниже) — только stdlib, без bleach/nh3 (недоступны в этом
+    окружении, зависимости не добавляем). HTMLParser не падает на битой/незакрытой
+    разметке — это важно именно здесь, потому что вход печатает человек в CRM-админке,
+    а не система."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._out: list[str] = []
+        self._skip_depth = 0  # вложенность внутри <script>/<style>
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _RICH_TEXT_DROP_CONTENT_TAGS:
+            self._skip_depth += 1
+            return
+        if self._skip_depth or tag not in _RICH_TEXT_ALLOWED_TAGS:
+            return
+        if tag == "a":
+            href = dict(attrs).get("href")
+            # Все остальные атрибуты (в т.ч. href с опасной схемой) отбрасываются
+            # молча — тег и его текст остаются, ссылка перестаёт быть кликабельной.
+            if href and _is_safe_rich_text_href(href):
+                self._out.append(f'<a href="{escape(href, quote=True)}">')
+            else:
+                self._out.append("<a>")
+        else:
+            self._out.append(f"<{tag}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _RICH_TEXT_DROP_CONTENT_TAGS:
+            self._skip_depth = max(0, self._skip_depth - 1)
+            return
+        if self._skip_depth or tag not in _RICH_TEXT_ALLOWED_TAGS or tag in _RICH_TEXT_VOID_TAGS:
+            return
+        self._out.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        self._out.append(escape(data))
+
+    def get_html(self) -> str:
+        return "".join(self._out)
+
+
+def sanitize_rich_text(html_text: str) -> str:
+    """Санитайзер для CRM-редактируемого rich-текста (``site.seo.bottom_text``,
+    легитимный вид — storefront/tests/factories.py), который рендерится в
+    templates/index.html через ``|safe``: без этого CRM-текст с <script>/onerror=
+    был бы обычным XSS. Allow-list из горстки тегов (см.
+    _RICH_TEXT_ALLOWED_TAGS/_RichTextSanitizer) — та же логика, что в
+    render_seo_template выше: явный список разрешённого, а не попытка распознать и
+    вычистить запрещённое."""
+    if not html_text:
+        return ""
+    parser = _RichTextSanitizer()
+    parser.feed(html_text)
+    parser.close()
+    return parser.get_html()
+
+
 def build_organization_jsonld(config: dict[str, Any]) -> dict[str, Any]:
     contacts = config["contacts"]
     data: dict[str, Any] = {
@@ -85,6 +171,24 @@ def build_organization_jsonld(config: dict[str, Any]) -> dict[str, Any]:
     if contacts["same_as"]:
         data["sameAs"] = contacts["same_as"]
     return data
+
+
+_JSONLD_SCRIPT_ESCAPES = {
+    ord("<"): "\\u003C",
+    ord(">"): "\\u003E",
+    ord("&"): "\\u0026",
+}
+
+
+def _dumps_for_script(value: Any) -> str:
+    """json.dumps() не экранирует < > & — без этого CRM-текст (ответ FAQ, описание
+    авто, имя контакта и т.д.), содержащий "</script>", разорвал бы
+    <script type="application/ld+json"> тег, в который результат попадает через
+    {{ jsonld|safe }} (templates/base.html). Те же три символа и то же \\uXXXX
+    экранирование, что использует django.utils.html.json_script
+    (_json_script_escapes) — здесь просто нет самого фильтра json_script, потому что
+    <script> в base.html оформлен не под его вывод."""
+    return json.dumps(value, ensure_ascii=False).translate(_JSONLD_SCRIPT_ESCAPES)
 
 
 def build_landing_jsonld(request: HttpRequest, config: dict[str, Any]) -> str:
@@ -104,7 +208,7 @@ def build_landing_jsonld(request: HttpRequest, config: dict[str, Any]) -> str:
                 ],
             },
         )
-    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False)
+    return _dumps_for_script({"@context": "https://schema.org", "@graph": graph})
 
 
 def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str, Any], car_url: str) -> str:
@@ -144,4 +248,4 @@ def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str
             {"@type": "ListItem", "position": 3, "name": f"{car['brand']} {car['model']}", "item": car_url},
         ],
     }
-    return json.dumps([organization, product, breadcrumb], ensure_ascii=False)
+    return _dumps_for_script([organization, product, breadcrumb])

@@ -32,6 +32,11 @@ class LandingView(View):
             return _unavailable(request)
         if config is None:
             return _unavailable(request)
+        # bottom_text — CRM-редактируемый rich-текст, рендерится в index.html через
+        # |safe: санитизируем один раз здесь, у источника, а не в шаблоне, чтобы
+        # |safe в index.html не пришлось трогать и не завести второе место, где
+        # можно забыть про санитизацию.
+        config["seo"]["bottom_text"] = seo.sanitize_rich_text(config["seo"]["bottom_text"])
         context = {
             "site": config,
             "cars": cars,
