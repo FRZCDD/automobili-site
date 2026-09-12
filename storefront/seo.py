@@ -23,6 +23,8 @@ from urllib.parse import urlparse
 from django.http import HttpRequest
 from django.urls import reverse
 
+_SCHEMA_CONTEXT = "https://schema.org"
+
 _TOKEN_RE = re.compile(r"\{([^{}]*)\}")
 _ALLOWED_TOKENS = frozenset({"brand", "model", "year", "price", "monthly"})
 
@@ -208,7 +210,7 @@ def build_landing_jsonld(request: HttpRequest, config: dict[str, Any]) -> str:
                 ],
             },
         )
-    return _dumps_for_script({"@context": "https://schema.org", "@graph": graph})
+    return _dumps_for_script({"@context": _SCHEMA_CONTEXT, "@graph": graph})
 
 
 def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str, Any], car_url: str) -> str:
@@ -218,9 +220,9 @@ def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str
     # включена и здесь: по спецификации SEO-слоя (Task 1) она обязана быть на каждой
     # странице, не только на лендинге — там же FAQPage и Product+Offer+BreadcrumbList
     # разведены по типам страниц ровно так, как задумано.
-    organization = {"@context": "https://schema.org", **build_organization_jsonld(config)}
+    organization = {"@context": _SCHEMA_CONTEXT, **build_organization_jsonld(config)}
     product = {
-        "@context": "https://schema.org",
+        "@context": _SCHEMA_CONTEXT,
         "@type": "Product",
         "name": f"{car['brand']} {car['model']} {car['year']}",
         "description": car.get("description") or "",
@@ -236,7 +238,7 @@ def build_car_jsonld(request: HttpRequest, config: dict[str, Any], car: dict[str
         product["image"] = car["photo_url"]
     landing_url = request.build_absolute_uri(reverse("storefront:landing"))
     breadcrumb = {
-        "@context": "https://schema.org",
+        "@context": _SCHEMA_CONTEXT,
         "@type": "BreadcrumbList",
         # Три уровня — ровно то, что показывает видимая хлебная крошка на странице
         # (Главная / Каталог / <авто>, templates/car_detail.html): структурированные

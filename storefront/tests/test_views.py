@@ -27,6 +27,19 @@ class LandingViewTests(SimpleTestCase):
         self.assertContains(response, "Kia")
         self.assertContains(response, "Rio")
 
+    def test_loads_calculator_and_chart_js(self) -> None:
+        # Калькулятор есть только на лендинге — Chart.js и calculator.js грузятся
+        # через index.html's extra_scripts, не безусловно из base.html (иначе их
+        # тянула бы и карточка авто, где калькулятора нет — см. CarDetailViewTests
+        # .test_does_not_load_calculator_or_chart_js).
+        with (
+            patch.object(crm_client, "get_site_config", return_value=SAMPLE_CONFIG),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:landing"))
+        self.assertContains(response, "chart.umd.min.js")
+        self.assertContains(response, "calculator.js")
+
     def test_crm_unreachable_renders_unavailable_page(self) -> None:
         with (
             patch.object(crm_client, "get_site_config", side_effect=crm_client.CrmUnavailableError),
@@ -160,6 +173,16 @@ class CarDetailViewTests(SimpleTestCase):
         self.assertContains(response, 'property="og:title" content="Kia Rio 2021 в кредит от 4,9% — купить')
         self.assertContains(response, f'property="og:image" content="{SAMPLE_CAR["photo_url"]}"')
         self.assertNotContains(response, SAMPLE_CONFIG["seo"]["title_landing"])
+
+    def test_does_not_load_calculator_or_chart_js(self) -> None:
+        with (
+            patch.object(crm_client, "get_site_config", return_value=SAMPLE_CONFIG),
+            patch.object(crm_client, "get_car", return_value=SAMPLE_CAR),
+            patch.object(crm_client, "get_cars", return_value=[SAMPLE_CAR]),
+        ):
+            response = self.client.get(reverse("storefront:car_detail", args=["kia-rio-2021"]))
+        self.assertNotContains(response, "chart.umd.min.js")
+        self.assertNotContains(response, "calculator.js")
 
     def test_does_not_link_to_crms_own_car_url(self) -> None:
         # SAMPLE_CAR["url"] пойнтит на CRM (http://crm.invalid/cars/...) — вьюха не

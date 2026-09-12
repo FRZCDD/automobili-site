@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load storefront_extras %}
+{% load static storefront_extras %}
 
 {% block title %}{{ site.seo.title_landing|default:site.name }}{% endblock %}
 {% block meta_description %}{{ site.seo.description_landing }}{% endblock %}
@@ -67,14 +67,14 @@
   {% if new_cars %}
     <h3 class="text-lg font-semibold text-slate-200 mb-4">Новые</h3>
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
-      {% for car in new_cars %}{% include "partials/_showcase_card.html" %}{% endfor %}
+      {% for car in new_cars %}{% include "partials/_showcase_card.html" with car=car %}{% endfor %}
     </div>
   {% endif %}
 
   {% if used_cars %}
     <h3 class="text-lg font-semibold text-slate-200 mb-4">С пробегом</h3>
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {% for car in used_cars %}{% include "partials/_showcase_card.html" %}{% endfor %}
+      {% for car in used_cars %}{% include "partials/_showcase_card.html" with car=car %}{% endfor %}
     </div>
   {% endif %}
 
@@ -97,4 +97,10 @@
   {{ site.seo.bottom_text|safe }}
 </section>
 {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{# Только на лендинге: карточке авто (car_detail.html) Chart.js/calculator.js не нужны. #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+<script src="{% static 'js/calculator.js' %}" defer></script>
 {% endblock %}

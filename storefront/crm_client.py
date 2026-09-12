@@ -81,13 +81,19 @@ def _error_detail(response: httpx.Response) -> str:
     return response.text[:500]
 
 
-def _get(path: str) -> httpx.Response:
+def _request(method: str, path: str, *, json: dict[str, Any] | None = None) -> httpx.Response:
+    """Общая обёртка сетевой ошибки для _get()/submit_lead(): один httpx.HTTPError
+    -> CrmUnavailableError на оба метода, а не два одинаковых try/except."""
     try:
         with _client() as client:
-            return client.get(path)
+            return client.request(method, path, json=json)
     except httpx.HTTPError as exc:
-        logger.warning("crm_request_unreachable", path=path, exc_info=exc)
+        logger.warning("crm_request_unreachable", method=method, path=path, exc_info=exc)
         raise CrmUnavailableError from exc
+
+
+def _get(path: str) -> httpx.Response:
+    return _request("GET", path)
 
 
 def _handle_json_or_404(response: httpx.Response) -> dict[str, Any] | None:
@@ -153,12 +159,7 @@ def submit_lead(
         "utm_campaign": utm_campaign,
         "site": settings.SITE_SLUG,
     }
-    try:
-        with _client() as client:
-            response = client.post("/api/v1/leads/create/", json=payload)
-    except httpx.HTTPError as exc:
-        logger.warning("crm_lead_submit_unreachable", exc_info=exc)
-        raise CrmUnavailableError from exc
+    response = _request("POST", "/api/v1/leads/create/", json=payload)
     if response.is_error:
         raise CrmClientError(response.status_code, _error_detail(response))
     try:
